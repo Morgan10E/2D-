@@ -107,7 +107,7 @@
 
 			
 
-            animate();
+                  animate();
             
             var filename = "./photos/fleur.png";
 			var image = new Image();
@@ -115,48 +115,97 @@
 			image.onload = function() {
 				ctx.drawImage(image, 10, 10);
 				var imageData = ctx.getImageData(10,10, image.width, image.height);
-				var points = getValues(imageData);
-				var geometry = new THREE.Geometry();
-				draw2d(points, ctx);
-				draw3D(points, geometry);
+                        console.log(imageData);
+				var geometry = getValues(imageData);
+				//draw2d(points, ctx);
+				//draw3D(points, geometry);
 				//geometry.computeVertexNormals();
 				//geometry.mergeVertices();
-				//var modifier = new THREE.SubdivisionModifier(2);
+				//var modifier = new THREE.SubdivisionModifier(3);
 				//modifier.modify(geometry);
 				subject = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({color:0x00efef}));
 				scene.add(subject);
 			};
 
             function getValues(imageData) { //scene
+                  var geometry = new THREE.Geometry();
             	var pixelData = imageData.data;
             	var points = new Array();
-            	for (var i = 0; i < pixelData.length; i+=4){
-            		var r = pixelData[i];
-            		var g = pixelData[i + 1];
-            		var b = pixelData[i + 2];
-            		var a = pixelData[i + 3];
-            		//console.log("[" + r + ", " + g + ", " + b + ", " + a + "]");
-            		if (a != 0) { //if it equals zero, the pixel is full transparent
-            			var depth = (r + g + b + a)/4;
-            			var row = Math.floor((i/4)/imageData.width);
-            			var col = Math.floor((i/4)%imageData.width);
-            			var point = {x:(col - imageData.width/2), y:(row - imageData.height/2), depth:depth};
-            			points[points.length] = point;
-            			//console.log(depth);
-            		}
-            	}
-            	return points;
+                  for (var row = 0; row < imageData.width - 1; row++){
+                        for (var col = 0; col < imageData.height - 1; col++){
+                              var point = getPoint(row, col, pixelData, imageData);
+                              if (point != null) {
+                                    var rightPoint = getPoint(row, col+1, pixelData, imageData);
+                                    var downPoint = getPoint(row+1, col, pixelData, imageData);
+                                    if (rightPoint != null && downPoint != null){
+                                          draw3D([point, rightPoint, downPoint], geometry);
+                                    }
+                                    if (col != 0) {
+                                          var downLeftPoint = getPoint(row+1, col-1, pixelData, imageData);
+                                          if (downLeftPoint != null && downPoint != null){
+                                                draw3D([point, downPoint, downLeftPoint], geometry);
+                                          }
+                                    }
+                              }
+                        }
+                  }
+                  return geometry;
+
+            	// for (var i = 0; i < pixelData.length; i+=4){
+            	// 	var r = pixelData[i];
+            	// 	var g = pixelData[i + 1];
+            	// 	var b = pixelData[i + 2];
+            	// 	var a = pixelData[i + 3];
+            	// 	//console.log("[" + r + ", " + g + ", " + b + ", " + a + "]");
+            	// 	if (a != 0) { //if it equals zero, the pixel is full transparent
+            	// 		var depth = (r + g + b + a)/4;
+            	// 		var row = Math.floor((i/4)/imageData.width);
+            	// 		var col = Math.floor((i/4)%imageData.width);
+            	// 		var point = {x:(col - imageData.width/2), y:(row - imageData.height/2), depth:depth};
+            			
+                              
+             //                  //points[points.length] = point;
+            	// 		//console.log(depth);
+            	// 	}
+            	// }
+            	// return geometry;
             }
 
-            function draw3D(points, subject) {
-            	console.log(points[0]);
-            	console.log(points[1]);
-            	for (var i = 0; i < points.length; i++) {
-            		var mesh = new THREE.Mesh(new THREE.CubeGeometry(1, 1, points[i].depth/20), new THREE.MeshLambertMaterial({color:0x0f0f0f}));
-            		mesh.position.x = points[i].x;
-            		mesh.position.y = -points[i].y;
-            		THREE.GeometryUtils.merge(subject, mesh);
-            	}
+            function getPoint(row, col, pixelData, imageData) {
+                  var dataIndex = (row*imageData.width + col)*4;
+                  var r = pixelData[dataIndex];
+                  var g = pixelData[dataIndex];
+                  var b = pixelData[dataIndex];
+                  var a = pixelData[dataIndex];
+                  if (a != 0) { //if it equals zero, the pixel is full transparent
+                        var depth = (r + g + b + a)/4;
+                        //var row = Math.floor((i/4)/imageData.width);
+                        //var col = Math.floor((i/4)%imageData.width);
+                        var point = {x:(col - imageData.width/2), y:(row - imageData.height/2), depth:depth};
+                        return point;
+                  }
+                  return null;
+            }
+
+            function draw3D(points, geometry) {
+                  for (var i = 0; i < 3; i++) {
+                        geometry.vertices.push(
+                              new THREE.Vector3(
+                                    points[i].x,
+                                    points[i].y,
+                                    points[i].depth/30
+                              )
+                        );
+                  }
+                  var index = geometry.vertices.length;
+                  geometry.faces.push(
+                        new THREE.Face3(
+                              index - 3,
+                              index - 2,
+                              index - 1,
+                              normalOf(points[0], points[1], points[2])
+                        )
+                  );
             }
 
             function draw2d(points, context) {
@@ -164,6 +213,13 @@
             	for (var i = 0; i < points.length; i++) {
             		context.fillRect(points[i].x + 150, points[i].y + 150, 1, 1);
             	}
+            }
+
+            function normalOf(point1, point2, point3) {
+                  var a = new THREE.Vector3(point1.x - point2.x, point1.y - point2.y, point1.depth - point2.depth);
+                  var b = new THREE.Vector3(point1.x - point3.x, point1.y - point3.y, point1.depth - point3.depth);
+
+                  return new THREE.Vector3(a.y*b.z - a.z*b.y, a.x*b.z - a.z*b.x, a.x*b.y - a.y*b.x);
             }
 
             function animate() {

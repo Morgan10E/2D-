@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>3d</title>
+	</head>
+	<body bgcolor="#000000">
+		<!--<form name="form" onSubmit="JavaScript:draw3D()">
+			<input type="text" name="filename" value="Photo Name Here!">
+			<input type="submit" value="Render">
+		</form>
+		<br>
+		<br>-->
+		<canvas id="imageCanvas" width="300" height="300" style="border:3px solid #FFFFFF;">
+
+		</canvas>
+		<form>
+			Photo:
+			<input type="text" name="filename">
+			<br>
+			<input type="submit" value="Render">
+		</form>
+
+
+		<script src="three.js"></script>
+		<script src="stats.js"></script>
+		<script>
+		var scene, camera, directionalLight, renderer, stats, subject;
+		function init() {
+			scene = new THREE.Scene();
+
+			//camera
+			camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+			camera.position.z = 150;
+            camera.position.y = 0;
+            scene.add(camera);
+
+            //lighting
+            directionalLight = new THREE.DirectionalLight(0xffffff);
+            directionalLight.position.x = -1; 
+            directionalLight.position.y = 3; 
+            directionalLight.position.z = 1; 
+            directionalLight.position.normalize();
+            scene.add(directionalLight);
+
+            directionalLight2 = new THREE.DirectionalLight(0xffffff);
+            directionalLight2.position.x = -1; 
+            directionalLight2.position.y = -3; 
+            directionalLight2.position.z = 1; 
+            directionalLight2.position.normalize();
+            scene.add(directionalLight2);
+
+            // directionalLight2 = new THREE.DirectionalLight(0xffffff);
+            // directionalLight2.position.x = -1; 
+            // directionalLight2.position.y = 3; 
+            // directionalLight2.position.z = 1; 
+            // directionalLight2.position.normalize();
+            // scene.add(directionalLight2);
+
+            //var canvas = document.getElementById("3dCanvas");
+            renderer = new THREE.WebGLRenderer(); //new THREE.CanvasRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            document.body.appendChild(renderer.domElement);
+
+
+            //FPS info
+            stats = new Stats();
+            stats.domElement.style.position = 'absolute';
+            stats.domElement.style.top = '0px';
+            document.body.appendChild(stats.domElement);
+		}
+
+		function setupMouseEvents() {
+			document.onmousedown = function(e) {
+				var lastPosX = e.pageX;
+				var lastPosY = e.pageY;
+				document.onmousemove = function(ev) {
+					subject.rotation.y += (ev.pageX - lastPosX)/500;
+					subject.rotation.x += (ev.pageY - lastPosY)/500;
+					lastPosX = ev.pageX;
+					lastPosY = ev.pageY;
+					renderer.render(scene, camera);
+				}
+				document.onmouseup = function() {
+					document.onmousemove = null;
+				}
+			}
+		}
+			var imageCanvas = document.getElementById("imageCanvas");
+			var ctx = imageCanvas.getContext("2d");
+			ctx.strokeStyle = "#FFFFFF";
+			//ctx.strokeRect(10,10,300,300);
+			//ctx.strokeRect(320, 10, 500, 500);
+
+
+
+			
+			
+			init();
+
+            /*subject = new THREE.Mesh(new THREE.CubeGeometry(200, 200, 200), new THREE.MeshNormalMaterial());
+			subject.position.y = 0;
+
+			scene.add(subject);
+			*/
+			setupMouseEvents();
+
+			
+
+            animate();
+            
+            var filename = "./photos/fleur.png";
+			var image = new Image();
+			image.src = filename;
+			image.onload = function() {
+				ctx.drawImage(image, 10, 10);
+				var imageData = ctx.getImageData(10,10, image.width, image.height);
+				var points = getValues(imageData);
+				var geometry = new THREE.Geometry();
+				draw2d(points, ctx);
+				draw3D(points, geometry);
+				//geometry.computeVertexNormals();
+				//geometry.mergeVertices();
+				//var modifier = new THREE.SubdivisionModifier(2);
+				//modifier.modify(geometry);
+				subject = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({color:0x00efef}));
+				scene.add(subject);
+			};
+
+            function getValues(imageData) { //scene
+            	var pixelData = imageData.data;
+            	var points = new Array();
+            	for (var i = 0; i < pixelData.length; i+=4){
+            		var r = pixelData[i];
+            		var g = pixelData[i + 1];
+            		var b = pixelData[i + 2];
+            		var a = pixelData[i + 3];
+            		//console.log("[" + r + ", " + g + ", " + b + ", " + a + "]");
+            		if (a != 0) { //if it equals zero, the pixel is full transparent
+            			var depth = (r + g + b + a)/4;
+            			var row = Math.floor((i/4)/imageData.width);
+            			var col = Math.floor((i/4)%imageData.width);
+            			var point = {x:(col - imageData.width/2), y:(row - imageData.height/2), depth:depth};
+            			points[points.length] = point;
+            			//console.log(depth);
+            		}
+            	}
+            	return points;
+            }
+
+            function draw3D(points, subject) {
+            	console.log(points[0]);
+            	console.log(points[1]);
+            	for (var i = 0; i < points.length; i++) {
+            		var mesh = new THREE.Mesh(new THREE.CubeGeometry(1, 1, points[i].depth/20), new THREE.MeshLambertMaterial({color:0x0f0f0f}));
+            		mesh.position.x = points[i].x;
+            		mesh.position.y = -points[i].y;
+            		THREE.GeometryUtils.merge(subject, mesh);
+            	}
+            }
+
+            function draw2d(points, context) {
+            	context.fillStyle = "#FFFFFF";
+            	for (var i = 0; i < points.length; i++) {
+            		context.fillRect(points[i].x + 150, points[i].y + 150, 1, 1);
+            	}
+            }
+
+            function animate() {
+
+                // note: three.js includes requestAnimationFrame shim
+                requestAnimationFrame( animate );
+                render();
+                stats.update();
+
+            }
+
+            function render() {
+            	//	subject.rotation.z += 0.02;
+            	//	subject.rotation.y += 0.02;
+            	//	subject.rotation.x += 0.02;
+            	renderer.render(scene, camera);
+            }
+		</script>
+		
+	</body>
+</html>

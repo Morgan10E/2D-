@@ -10,7 +10,7 @@
 		</form>
 		<br>
 		<br>-->
-		<canvas id="imageCanvas" width="300" height="300" style="border:3px solid #FFFFFF;">
+		<canvas id="imageCanvas" width="700" height="500" style="border:3px solid #FFFFFF;">
 
 		</canvas>
 		<form>
@@ -30,7 +30,7 @@
 
 			//camera
 			camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-			camera.position.z = 150;
+			camera.position.z = 250;
             camera.position.y = 0;
             scene.add(camera);
 
@@ -109,7 +109,7 @@
 
                   animate();
             
-            var filename = "./photos/fleur.png";
+            var filename = "./photos/fleur_big3.png";
 			var image = new Image();
 			image.src = filename;
 			image.onload = function() {
@@ -121,8 +121,8 @@
 				//draw3D(points, geometry);
 				//geometry.computeVertexNormals();
 				//geometry.mergeVertices();
-				//var modifier = new THREE.SubdivisionModifier(3);
-				//modifier.modify(geometry);
+				// var modifier = new THREE.SubdivisionModifier(1);
+				// modifier.modify(geometry);
 				subject = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({color:0x00efef}));
 				scene.add(subject);
 			};
@@ -177,7 +177,7 @@
                   var g = pixelData[dataIndex];
                   var b = pixelData[dataIndex];
                   var a = pixelData[dataIndex];
-                  if (a != 0) { //if it equals zero, the pixel is full transparent
+                  if (a > 0) { //if it equals zero, the pixel is full transparent
                         var depth = (r + g + b + a)/4;
                         //var row = Math.floor((i/4)/imageData.width);
                         //var col = Math.floor((i/4)%imageData.width);
@@ -196,6 +196,13 @@
                                     points[i].depth/30
                               )
                         );
+                        // geometry.vertices.push(
+                        //       new THREE.Vector3(
+                        //             points[i].x,
+                        //             points[i].y,
+                        //             -points[i].depth/30
+                        //       )
+                        // );
                   }
                   var index = geometry.vertices.length;
                   geometry.faces.push(
@@ -206,6 +213,14 @@
                               normalOf(points[0], points[1], points[2])
                         )
                   );
+                  // geometry.faces.push(
+                  //       new THREE.Face3(
+                  //             index - 3,
+                  //             index - 2,
+                  //             index - 1,
+                  //             normalOf(points[0], points[1], points[2])
+                  //       )
+                  // );
             }
 
             function draw2d(points, context) {
